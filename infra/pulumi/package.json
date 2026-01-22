@@ -1,5 +1,5 @@
 {
-  "name": "@palindrom-ai/monitoring-infra",
+  "name": "monitoring-infra",
   "version": "0.1.0",
   "description": "Observability stack infrastructure (SigNoz + GlitchTip)",
   "main": "src/index.ts",
