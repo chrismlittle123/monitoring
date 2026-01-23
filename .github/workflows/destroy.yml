@@ -50,8 +50,8 @@ jobs:
           export PATH="$HOME/.pulumi/bin:$PATH"
           pulumi login s3://pulumi-state-215629979895
           pulumi stack select dev --create
-          pulumi refresh --yes
-          pulumi destroy --yes
+          pulumi destroy --yes --skip-preview
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
           PULUMI_STACK: dev
+          PULUMI_K8S_DELETE_UNREACHABLE: "true"
