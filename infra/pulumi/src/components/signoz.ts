@@ -361,7 +361,7 @@ export function createSignoz(options: SignozOptions): SignozOutputs {
     containerDefinitions: pulumi.interpolate`[
       {
         "name": "signoz",
-        "image": "signoz/signoz:v0.55.0",
+        "image": "signoz/signoz:v0.108.0",
         "essential": true,
         "portMappings": [
           { "containerPort": 8080, "hostPort": 8080, "protocol": "tcp" }
@@ -391,7 +391,7 @@ export function createSignoz(options: SignozOptions): SignozOutputs {
       },
       {
         "name": "otel-collector",
-        "image": "signoz/signoz-otel-collector:v0.111.16",
+        "image": "signoz/signoz-otel-collector:v0.129.12",
         "essential": true,
         "portMappings": [
           { "containerPort": 4317, "hostPort": 4317, "protocol": "tcp" },
