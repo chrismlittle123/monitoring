@@ -63,34 +63,102 @@ jobs:
           pulumi login s3://pulumi-state-215629979895
           pulumi stack select dev --create
 
-          # First attempt to destroy
-          if pulumi destroy --yes --skip-preview; then
-            echo "Destroy completed successfully"
-          else
-            echo "First destroy attempt failed, removing unreachable K8s resources from state..."
+          # Export state and remove K8s resources that can't be deleted
+          echo "Removing unreachable K8s resources from state..."
+          pulumi stack export > state.json
 
-            # Get list of K8s resources and remove them from state
-            pulumi stack export > state.json
-
-            # Remove K8s resources from state (helm releases, configmaps, namespaces)
-            for resource in $(pulumi stack --show-urns 2>/dev/null | grep -E 'kubernetes:|helm.sh' | awk '{print $1}' || true); do
-              echo "Removing $resource from state"
-              pulumi state delete "$resource" --yes --force 2>/dev/null || true
-            done
-
-            # Retry destroy after removing K8s resources
-            echo "Retrying destroy..."
-            pulumi destroy --yes --skip-preview || {
-              echo "Second attempt failed, trying to remove remaining problematic resources..."
-              # List all URNs and try to remove any that fail
-              for urn in $(pulumi stack --show-urns 2>/dev/null | awk '{print $1}'); do
-                pulumi state delete "$urn" --yes --force 2>/dev/null || true
-              done
-              # Final attempt
-              pulumi destroy --yes --skip-preview || true
-            }
+          # Use jq to filter out kubernetes and helm resources, then import back
+          if command -v jq &> /dev/null; then
+            jq 'del(.deployment.resources[] | select(.type | startswith("kubernetes:") or startswith("helm.sh/")))' state.json > filtered_state.json
+            pulumi stack import --file filtered_state.json || true
           fi
+
+          # Now destroy remaining resources
+          echo "Destroying remaining resources..."
+          pulumi destroy --yes --skip-preview --continue-on-error || true
+
+          # Check if any resources remain
+          REMAINING=$(pulumi stack --show-urns 2>/dev/null | grep -c "urn:pulumi" || echo "0")
+          if [ "$REMAINING" -gt "1" ]; then
+            echo "Some resources remain, forcing state cleanup..."
+            # Export and clear all resources
+            pulumi stack export > final_state.json
+            jq '.deployment.resources = [.deployment.resources[0]]' final_state.json > empty_state.json
+            pulumi stack import --file empty_state.json || true
+          fi
+
+          echo "Pulumi state cleanup complete"
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
           PULUMI_STACK: dev
           PULUMI_K8S_DELETE_UNREACHABLE: "true"
+
+      - name: Verify AWS Cleanup
+        run: |
+          echo "=== Verifying AWS Resource Cleanup ==="
+          echo ""
+
+          echo "Checking EKS clusters..."
+          EKS=$(aws eks list-clusters --query 'clusters[?contains(@, `signoz`) || contains(@, `monitoring`)]' --output text)
+          if [ -n "$EKS" ]; then
+            echo "WARNING: Found EKS clusters: $EKS"
+          else
+            echo "✓ No monitoring EKS clusters found"
+          fi
+
+          echo ""
+          echo "Checking ECS clusters..."
+          ECS=$(aws ecs list-clusters --query 'clusterArns[?contains(@, `monitoring`)]' --output text)
+          if [ -n "$ECS" ]; then
+            echo "WARNING: Found ECS clusters: $ECS"
+          else
+            echo "✓ No monitoring ECS clusters found"
+          fi
+
+          echo ""
+          echo "Checking Load Balancers..."
+          ALB=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `monitoring`)].LoadBalancerName' --output text)
+          if [ -n "$ALB" ]; then
+            echo "WARNING: Found ALBs: $ALB"
+          else
+            echo "✓ No monitoring ALBs found"
+          fi
+
+          echo ""
+          echo "Checking VPCs..."
+          VPC=$(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=monitoring" --query 'Vpcs[*].VpcId' --output text)
+          if [ -n "$VPC" ]; then
+            echo "WARNING: Found VPCs: $VPC"
+          else
+            echo "✓ No monitoring VPCs found"
+          fi
+
+          echo ""
+          echo "Checking RDS instances..."
+          RDS=$(aws rds describe-db-instances --query 'DBInstances[?contains(DBInstanceIdentifier, `glitchtip`)].DBInstanceIdentifier' --output text)
+          if [ -n "$RDS" ]; then
+            echo "WARNING: Found RDS: $RDS"
+          else
+            echo "✓ No glitchtip RDS instances found"
+          fi
+
+          echo ""
+          echo "Checking ElastiCache..."
+          REDIS=$(aws elasticache describe-cache-clusters --query 'CacheClusters[?contains(CacheClusterId, `glitchtip`)].CacheClusterId' --output text)
+          if [ -n "$REDIS" ]; then
+            echo "WARNING: Found ElastiCache: $REDIS"
+          else
+            echo "✓ No glitchtip ElastiCache clusters found"
+          fi
+
+          echo ""
+          echo "Checking EFS filesystems..."
+          EFS=$(aws efs describe-file-systems --query 'FileSystems[?contains(Name, `signoz`)].FileSystemId' --output text)
+          if [ -n "$EFS" ]; then
+            echo "WARNING: Found EFS: $EFS"
+          else
+            echo "✓ No signoz EFS filesystems found"
+          fi
+
+          echo ""
+          echo "=== Verification Complete ==="
