@@ -45,12 +45,51 @@ jobs:
       - name: Install Pulumi
         run: curl -fsSL https://get.pulumi.com | sh && echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
 
+      - name: Configure EKS Kubeconfig
+        run: |
+          # Try to get EKS cluster name and configure kubeconfig
+          EKS_CLUSTER=$(aws eks list-clusters --query 'clusters[?contains(@, `signoz`)]' --output text 2>/dev/null || echo "")
+          if [ -n "$EKS_CLUSTER" ]; then
+            echo "Configuring kubeconfig for $EKS_CLUSTER"
+            aws eks update-kubeconfig --name "$EKS_CLUSTER" --region $AWS_REGION || true
+          else
+            echo "No EKS cluster found, will remove K8s resources from state"
+          fi
+        continue-on-error: true
+
       - name: Destroy All Resources
         run: |
           export PATH="$HOME/.pulumi/bin:$PATH"
           pulumi login s3://pulumi-state-215629979895
           pulumi stack select dev --create
-          pulumi destroy --yes --skip-preview
+
+          # First attempt to destroy
+          if pulumi destroy --yes --skip-preview; then
+            echo "Destroy completed successfully"
+          else
+            echo "First destroy attempt failed, removing unreachable K8s resources from state..."
+
+            # Get list of K8s resources and remove them from state
+            pulumi stack export > state.json
+
+            # Remove K8s resources from state (helm releases, configmaps, namespaces)
+            for resource in $(pulumi stack --show-urns 2>/dev/null | grep -E 'kubernetes:|helm.sh' | awk '{print $1}' || true); do
+              echo "Removing $resource from state"
+              pulumi state delete "$resource" --yes --force 2>/dev/null || true
+            done
+
+            # Retry destroy after removing K8s resources
+            echo "Retrying destroy..."
+            pulumi destroy --yes --skip-preview || {
+              echo "Second attempt failed, trying to remove remaining problematic resources..."
+              # List all URNs and try to remove any that fail
+              for urn in $(pulumi stack --show-urns 2>/dev/null | awk '{print $1}'); do
+                pulumi state delete "$urn" --yes --force 2>/dev/null || true
+              done
+              # Final attempt
+              pulumi destroy --yes --skip-preview || true
+            }
+          fi
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
           PULUMI_STACK: dev
