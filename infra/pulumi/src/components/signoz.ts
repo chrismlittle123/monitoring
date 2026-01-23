@@ -395,7 +395,7 @@ export function createSignoz(options: SignozOptions): SignozOutputs {
         "image": "signoz/signoz-otel-collector:v0.129.12",
         "essential": true,
         "entryPoint": ["sh", "-c"],
-        "command": ["cp /root/config/otel-collector-config.yaml /tmp/config.yaml && sed -i 's/clickhouse:9000/clickhouse.signoz.local:9000/g' /tmp/config.yaml && /signoz-otel-collector --config=/tmp/config.yaml"],
+        "command": ["cp /etc/otel/config.yaml /tmp/config.yaml && sed -i 's/clickhouse:9000/clickhouse.signoz.local:9000/g' /tmp/config.yaml && /signoz-otel-collector --config=/tmp/config.yaml"],
         "portMappings": [
           { "containerPort": 4317, "hostPort": 4317, "protocol": "tcp" },
           { "containerPort": 4318, "hostPort": 4318, "protocol": "tcp" }
