@@ -55,3 +55,4 @@ jobs:
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
           PULUMI_STACK: dev
+          PULUMI_K8S_DELETE_UNREACHABLE: "true"
