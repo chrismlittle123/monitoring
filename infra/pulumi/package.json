@@ -1,7 +1,7 @@
 {
   "name": "monitoring-infra",
-  "version": "0.1.0",
-  "description": "Observability stack infrastructure (SigNoz + GlitchTip)",
+  "version": "0.2.0",
+  "description": "Observability stack infrastructure (SigNoz + GlitchTip) on AWS",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
@@ -10,8 +10,8 @@
     "destroy": "pulumi destroy"
   },
   "dependencies": {
+    "@chrismlittle123/infra": "github:chrismlittle123/infra",
     "@pulumi/aws": "^6.0.0",
-    "@pulumi/awsx": "^2.0.0",
     "@pulumi/pulumi": "^3.0.0",
     "@pulumi/random": "^4.0.0"
   },
