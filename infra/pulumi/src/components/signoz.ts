@@ -116,14 +116,6 @@ services:
           memory: 512M
         reservations:
           memory: 256M
-
-  alertmanager:
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 64M
 OVERRIDE
 
 # Start SigNoz
