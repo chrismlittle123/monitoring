@@ -45,297 +45,93 @@ jobs:
       - name: Install Pulumi
         run: curl -fsSL https://get.pulumi.com | sh && echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
 
-      - name: Clear Pulumi State
+      - name: Destroy
         run: |
           export PATH="$HOME/.pulumi/bin:$PATH"
           pulumi login s3://pulumi-state-215629979895
           pulumi stack select dev --create
-          echo "Clearing Pulumi stack state..."
-          pulumi stack export | jq '.deployment.resources = []' | pulumi stack import --file /dev/stdin || true
-          echo "Pulumi state cleared"
+          pulumi refresh --yes
+          pulumi destroy --yes
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
           PULUMI_STACK: dev
-        timeout-minutes: 5
-
-      - name: Delete EKS Clusters
-        run: |
-          echo "Deleting EKS clusters..."
-          for cluster in $(aws eks list-clusters --query 'clusters' --output text); do
-            if [[ "$cluster" == *"signoz"* ]] || [[ "$cluster" == *"monitoring"* ]]; then
-              echo "Deleting EKS cluster: $cluster"
-
-              # Delete node groups first
-              for ng in $(aws eks list-nodegroups --cluster-name "$cluster" --query 'nodegroups' --output text 2>/dev/null || echo ""); do
-                echo "  Deleting node group: $ng"
-                aws eks delete-nodegroup --cluster-name "$cluster" --nodegroup-name "$ng" || true
-              done
-
-              # Wait for node groups to be deleted
-              echo "  Waiting for node groups to be deleted..."
-              for ng in $(aws eks list-nodegroups --cluster-name "$cluster" --query 'nodegroups' --output text 2>/dev/null || echo ""); do
-                aws eks wait nodegroup-deleted --cluster-name "$cluster" --nodegroup-name "$ng" 2>/dev/null || true
-              done
-
-              # Delete the cluster
-              echo "  Deleting cluster..."
-              aws eks delete-cluster --name "$cluster" || true
-
-              # Wait for cluster deletion
-              echo "  Waiting for cluster to be deleted..."
-              aws eks wait cluster-deleted --name "$cluster" 2>/dev/null || true
-            fi
-          done
-          echo "EKS cleanup complete"
         timeout-minutes: 30
-        continue-on-error: true
 
-      - name: Delete ECS Clusters
-        run: |
-          echo "Deleting ECS clusters..."
-          for cluster_arn in $(aws ecs list-clusters --query 'clusterArns' --output text); do
-            if [[ "$cluster_arn" == *"monitoring"* ]]; then
-              cluster_name=$(echo "$cluster_arn" | cut -d'/' -f2)
-              echo "Deleting ECS cluster: $cluster_name"
-
-              # Stop all running tasks
-              for task in $(aws ecs list-tasks --cluster "$cluster_name" --query 'taskArns' --output text 2>/dev/null || echo ""); do
-                echo "  Stopping task: $task"
-                aws ecs stop-task --cluster "$cluster_name" --task "$task" || true
-              done
-
-              # Delete services
-              for service in $(aws ecs list-services --cluster "$cluster_name" --query 'serviceArns' --output text 2>/dev/null || echo ""); do
-                echo "  Deleting service: $service"
-                aws ecs update-service --cluster "$cluster_name" --service "$service" --desired-count 0 || true
-                aws ecs delete-service --cluster "$cluster_name" --service "$service" --force || true
-              done
-
-              # Wait for services to be deleted
-              sleep 30
-
-              # Delete cluster
-              aws ecs delete-cluster --cluster "$cluster_name" || true
-            fi
-          done
-          echo "ECS cleanup complete"
-        timeout-minutes: 10
-        continue-on-error: true
-
-      - name: Delete EFS Filesystems
-        run: |
-          echo "Deleting EFS filesystems..."
-          aws efs describe-file-systems --query 'FileSystems[*].[FileSystemId,Name]' --output text 2>/dev/null | while IFS=$'\t' read -r fs_id fs_name; do
-            if [[ "$fs_name" == *"signoz"* ]] || [[ "$fs_name" == *"monitoring"* ]]; then
-              echo "Deleting EFS filesystem: $fs_id ($fs_name)"
-
-              # Delete mount targets first
-              for mt in $(aws efs describe-mount-targets --file-system-id "$fs_id" --query 'MountTargets[*].MountTargetId' --output text 2>/dev/null || echo ""); do
-                if [ -n "$mt" ]; then
-                  echo "  Deleting mount target: $mt"
-                  aws efs delete-mount-target --mount-target-id "$mt" || true
-                fi
-              done
-
-              # Wait for mount targets to be deleted
-              echo "  Waiting for mount targets to be deleted..."
-              sleep 60
-
-              # Delete access points
-              for ap in $(aws efs describe-access-points --file-system-id "$fs_id" --query 'AccessPoints[*].AccessPointId' --output text 2>/dev/null || echo ""); do
-                if [ -n "$ap" ]; then
-                  echo "  Deleting access point: $ap"
-                  aws efs delete-access-point --access-point-id "$ap" || true
-                fi
-              done
-
-              # Delete the filesystem
-              echo "  Deleting filesystem..."
-              aws efs delete-file-system --file-system-id "$fs_id" || true
-            fi
-          done
-          echo "EFS cleanup complete"
-        timeout-minutes: 10
-        continue-on-error: true
-
-      - name: Delete VPCs
-        run: |
-          echo "Deleting monitoring VPCs..."
-          for vpc_id in $(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=monitoring" --query 'Vpcs[*].VpcId' --output text); do
-            echo "Deleting VPC: $vpc_id"
-
-            # Delete NAT Gateways
-            for nat in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$vpc_id" "Name=state,Values=available" --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || echo ""); do
-              echo "  Deleting NAT Gateway: $nat"
-              aws ec2 delete-nat-gateway --nat-gateway-id "$nat" || true
-            done
-
-            # Wait for NAT Gateways to be deleted
-            sleep 60
-
-            # Delete Load Balancers
-            for lb in $(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].LoadBalancerArn' --output text 2>/dev/null || echo ""); do
-              lb_vpc=$(aws elbv2 describe-load-balancers --load-balancer-arns "$lb" --query 'LoadBalancers[0].VpcId' --output text 2>/dev/null || echo "")
-              if [[ "$lb_vpc" == "$vpc_id" ]]; then
-                echo "  Deleting Load Balancer: $lb"
-                aws elbv2 delete-load-balancer --load-balancer-arn "$lb" || true
-              fi
-            done
-
-            # Wait for LBs to be deleted
-            sleep 30
-
-            # Delete Internet Gateway
-            for igw in $(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc_id" --query 'InternetGateways[*].InternetGatewayId' --output text 2>/dev/null || echo ""); do
-              echo "  Detaching and deleting Internet Gateway: $igw"
-              aws ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$vpc_id" || true
-              aws ec2 delete-internet-gateway --internet-gateway-id "$igw" || true
-            done
-
-            # Delete subnets
-            for subnet in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$vpc_id" --query 'Subnets[*].SubnetId' --output text 2>/dev/null || echo ""); do
-              echo "  Deleting subnet: $subnet"
-              aws ec2 delete-subnet --subnet-id "$subnet" || true
-            done
-
-            # Delete route tables (except main)
-            for rt in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpc_id" --query 'RouteTables[?Associations[0].Main!=`true`].RouteTableId' --output text 2>/dev/null || echo ""); do
-              echo "  Deleting route table: $rt"
-              # Disassociate first
-              for assoc in $(aws ec2 describe-route-tables --route-table-ids "$rt" --query 'RouteTables[0].Associations[*].RouteTableAssociationId' --output text 2>/dev/null || echo ""); do
-                aws ec2 disassociate-route-table --association-id "$assoc" 2>/dev/null || true
-              done
-              aws ec2 delete-route-table --route-table-id "$rt" || true
-            done
-
-            # Delete security groups (except default)
-            for sg in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text 2>/dev/null || echo ""); do
-              echo "  Deleting security group: $sg"
-              aws ec2 delete-security-group --group-id "$sg" || true
-            done
-
-            # Release Elastic IPs associated with this VPC
-            for eip in $(aws ec2 describe-addresses --query 'Addresses[*].AllocationId' --output text 2>/dev/null || echo ""); do
-              aws ec2 release-address --allocation-id "$eip" 2>/dev/null || true
-            done
-
-            # Delete the VPC
-            echo "  Deleting VPC..."
-            aws ec2 delete-vpc --vpc-id "$vpc_id" || true
-          done
-          echo "VPC cleanup complete"
-        timeout-minutes: 15
-        continue-on-error: true
-
-      - name: Verify AWS Cleanup
+      - name: Verify Cleanup
         run: |
           echo "=== Verifying AWS Resource Cleanup ==="
           echo ""
-          FOUND_RESOURCES=0
 
-          echo "Checking EKS clusters..."
-          EKS=$(aws eks list-clusters --query 'clusters' --output text)
-          if [ -n "$EKS" ]; then
-            for cluster in $EKS; do
-              if [[ "$cluster" == *"signoz"* ]] || [[ "$cluster" == *"monitoring"* ]]; then
-                echo "WARNING: Found EKS cluster: $cluster"
-                FOUND_RESOURCES=1
-              fi
-            done
-          fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
-            echo "✓ No monitoring EKS clusters found"
+          echo "Checking EC2 instances..."
+          INSTANCES=$(aws ec2 describe-instances --filters "Name=tag:Project,Values=monitoring" "Name=instance-state-name,Values=running,pending,stopping,stopped" --query 'Reservations[*].Instances[*].InstanceId' --output text)
+          if [ -n "$INSTANCES" ]; then
+            echo "WARNING: Found EC2 instances: $INSTANCES"
+          else
+            echo "✓ No monitoring EC2 instances found"
           fi
 
-          FOUND_RESOURCES=0
           echo ""
           echo "Checking ECS clusters..."
           ECS=$(aws ecs list-clusters --query 'clusterArns' --output text)
+          FOUND=0
           if [ -n "$ECS" ]; then
             for cluster in $ECS; do
               if [[ "$cluster" == *"monitoring"* ]]; then
                 echo "WARNING: Found ECS cluster: $cluster"
-                FOUND_RESOURCES=1
+                FOUND=1
               fi
             done
           fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
+          if [ $FOUND -eq 0 ]; then
             echo "✓ No monitoring ECS clusters found"
           fi
 
-          FOUND_RESOURCES=0
           echo ""
           echo "Checking Load Balancers..."
           ALB=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].LoadBalancerName' --output text)
+          FOUND=0
           if [ -n "$ALB" ]; then
             for lb in $ALB; do
               if [[ "$lb" == *"monitoring"* ]]; then
                 echo "WARNING: Found ALB: $lb"
-                FOUND_RESOURCES=1
+                FOUND=1
               fi
             done
           fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
+          if [ $FOUND -eq 0 ]; then
             echo "✓ No monitoring ALBs found"
           fi
 
-          FOUND_RESOURCES=0
-          echo ""
-          echo "Checking VPCs..."
-          VPC=$(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=monitoring" --query 'Vpcs[*].VpcId' --output text)
-          if [ -n "$VPC" ]; then
-            echo "WARNING: Found VPCs: $VPC"
-            FOUND_RESOURCES=1
-          else
-            echo "✓ No monitoring VPCs found"
-          fi
-
-          FOUND_RESOURCES=0
           echo ""
           echo "Checking RDS instances..."
           RDS=$(aws rds describe-db-instances --query 'DBInstances[*].DBInstanceIdentifier' --output text)
+          FOUND=0
           if [ -n "$RDS" ]; then
             for db in $RDS; do
-              if [[ "$db" == *"glitchtip"* ]]; then
+              if [[ "$db" == *"monitoring"* ]] || [[ "$db" == *"glitchtip"* ]]; then
                 echo "WARNING: Found RDS: $db"
-                FOUND_RESOURCES=1
+                FOUND=1
               fi
             done
           fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
-            echo "✓ No glitchtip RDS instances found"
+          if [ $FOUND -eq 0 ]; then
+            echo "✓ No monitoring RDS instances found"
           fi
 
-          FOUND_RESOURCES=0
           echo ""
           echo "Checking ElastiCache..."
           REDIS=$(aws elasticache describe-cache-clusters --query 'CacheClusters[*].CacheClusterId' --output text 2>/dev/null || echo "")
+          FOUND=0
           if [ -n "$REDIS" ]; then
             for cache in $REDIS; do
-              if [[ "$cache" == *"glitchtip"* ]]; then
+              if [[ "$cache" == *"monitoring"* ]] || [[ "$cache" == *"glitchtip"* ]]; then
                 echo "WARNING: Found ElastiCache: $cache"
-                FOUND_RESOURCES=1
+                FOUND=1
               fi
             done
           fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
-            echo "✓ No glitchtip ElastiCache clusters found"
-          fi
-
-          FOUND_RESOURCES=0
-          echo ""
-          echo "Checking EFS filesystems..."
-          EFS=$(aws efs describe-file-systems --query 'FileSystems[*].[FileSystemId,Name]' --output text 2>/dev/null || echo "")
-          if [ -n "$EFS" ]; then
-            while IFS=$'\t' read -r id name; do
-              if [[ "$name" == *"signoz"* ]]; then
-                echo "WARNING: Found EFS: $id ($name)"
-                FOUND_RESOURCES=1
-              fi
-            done <<< "$EFS"
-          fi
-          if [ $FOUND_RESOURCES -eq 0 ]; then
-            echo "✓ No signoz EFS filesystems found"
+          if [ $FOUND -eq 0 ]; then
+            echo "✓ No monitoring ElastiCache clusters found"
           fi
 
           echo ""
