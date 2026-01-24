@@ -1,5 +1,4 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as random from "@pulumi/random";
 import {
   createContainer,
   createDatabase,
@@ -38,13 +37,8 @@ export interface GlitchTipOutputs {
 }
 
 export function createGlitchTip(name: string, options: GlitchTipOptions = {}): GlitchTipOutputs {
-  // Generate secret key for Django
-  const secretKey = new random.RandomPassword(`${name}-secret`, {
-    length: 50,
-    special: false,
-  });
-
   // Create PostgreSQL database (RDS)
+  // The database now generates a secretKey that we can use for Django's SECRET_KEY
   const db = createDatabase(`${name}-db`, {
     size: "small",
     version: "15",
@@ -61,7 +55,7 @@ export function createGlitchTip(name: string, options: GlitchTipOptions = {}): G
   // Note: Using type assertion because environment is typed as Record<string, string>
   // but Pulumi handles Output<string> values at runtime when building task definitions
   const commonEnv: Record<string, string> = {
-    SECRET_KEY: secretKey.result as unknown as string,
+    SECRET_KEY: db.secretKey as unknown as string,
     DEFAULT_FROM_EMAIL: options.fromEmail || "noreply@example.com",
     EMAIL_URL: "consolemail://",
     ENABLE_OPEN_USER_REGISTRATION: options.openRegistration !== false ? "true" : "false",
