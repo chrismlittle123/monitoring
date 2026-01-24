@@ -1,0 +1,5 @@
+# check-my-toolkit configuration
+[extends]
+registry = "github:chrismlittle123/check-my-toolkit-registry-community"
+rulesets = ["typescript-internal"]
+
