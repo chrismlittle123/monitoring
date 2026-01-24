@@ -3,3 +3,7 @@
 registry = "github:chrismlittle123/check-my-toolkit-registry-community"
 rulesets = ["typescript-internal"]
 
+[infra]
+enabled = true
+manifest = "infra/pulumi/infra-manifest.json"
+
