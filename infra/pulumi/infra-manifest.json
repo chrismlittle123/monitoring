@@ -1,7 +1,7 @@
 {
   "project": "stag",
   "environment": "stag",
-  "generatedAt": "2026-01-25T06:48:08.439Z",
+  "generatedAt": "2026-01-25T08:34:31.229Z",
   "resources": [
     "arn:aws:ec2:eu-west-2:978212996213:key-pair/monitoring-signoz-instance-stag",
     "arn:aws:secretsmanager:eu-west-2:978212996213:secret:monitoring-glitchtip-db-database-stag-secret-key-0A2YcH",
