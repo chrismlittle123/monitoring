@@ -20,3 +20,6 @@ enabled = true
 
 [code.security.pnpmaudit]
 enabled = true
+
+[code.naming]
+enabled = false

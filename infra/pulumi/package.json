@@ -13,16 +13,21 @@
   },
   "dependencies": {
     "@chrismlittle123/infra": "github:chrismlittle123/infra",
-    "@pulumi/aws": "^6.0.0",
     "@pulumi/pulumi": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-import": "^2.32.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.53.1",
     "vitest": "^2.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "tar": "^7.5.6"
+    }
   }
 }
