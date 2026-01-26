@@ -1,0 +1,22 @@
+# check.toml - Configuration for check-my-toolkit
+# Monitoring infrastructure (Pulumi)
+
+[extends]
+registry = "github:palindrom-ai/standards"
+rulesets = ["typescript-internal"]
+
+[code.linting.eslint]
+files = ["src/**/*.ts"]
+ignore = ["node_modules/**/*", "src/__mocks__/**/*"]
+
+[code.types.tsc]
+enabled = true
+
+[code.unused.knip]
+enabled = true
+
+[code.security.secrets]
+enabled = true
+
+[code.security.pnpmaudit]
+enabled = true
