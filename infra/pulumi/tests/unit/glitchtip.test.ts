@@ -4,7 +4,7 @@ import {
   createRedis,
   createContainer,
 } from "@chrismlittle123/infra";
-import { createGlitchTip } from "./glitchtip";
+import { createGlitchTip } from "../../src/components/glitchtip";
 
 // Get the mock functions
 const mockCreateDatabase = createDatabase as ReturnType<typeof import("vitest").vi.fn>;

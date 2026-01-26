@@ -4,15 +4,15 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     alias: {
       // Alias external packages to allow mocking
       "@chrismlittle123/infra": new URL(
-        "./src/__mocks__/@chrismlittle123/infra.ts",
+        "./tests/__mocks__/@chrismlittle123/infra.ts",
         import.meta.url
       ).pathname,
       "@pulumi/pulumi": new URL(
-        "./src/__mocks__/@pulumi/pulumi.ts",
+        "./tests/__mocks__/@pulumi/pulumi.ts",
         import.meta.url
       ).pathname,
     },
@@ -20,7 +20,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.test.ts", "src/index.ts", "src/__mocks__/**"],
+      exclude: ["src/index.ts"],
     },
   },
 });

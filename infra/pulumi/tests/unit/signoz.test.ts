@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createInstance } from "@chrismlittle123/infra";
-import { createSignoz } from "./signoz";
+import { createSignoz } from "../../src/components/signoz";
 
 // Get the mock function
 const mockCreateInstance = createInstance as ReturnType<typeof import("vitest").vi.fn>;
