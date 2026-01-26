@@ -1,9 +1,42 @@
-# check-my-toolkit configuration
-[extends]
-registry = "github:chrismlittle123/check-my-toolkit-registry-community"
-rulesets = ["typescript-internal"]
+# check-my-toolkit configuration for monitoring infrastructure
+# Enforces code quality, workflow compliance, and infrastructure standards
 
-[infra]
+[code.linting.eslint]
+enabled = false  # Using TypeScript strict mode instead
+
+[code.types.tsc]
 enabled = true
-manifest = "infra/pulumi/infra-manifest.json"
 
+[code.types.tsc.require]
+strict = true
+
+[code.security.secrets]
+enabled = true
+
+[code.unused.knip]
+enabled = false  # Infrastructure code has different usage patterns
+
+[code.naming]
+enabled = true
+
+[[code.naming.rules]]
+extensions = ["ts"]
+file_case = "kebab-case"
+folder_case = "kebab-case"
+
+[process.hooks]
+enabled = false  # Not using Husky for this project
+
+[process.ci]
+enabled = true
+require_workflows = ["deploy.yml"]
+
+[process.ci.jobs]
+"deploy.yml" = ["deploy"]
+
+[process.repo]
+enabled = true
+require_codeowners = true
+
+[process.coverage]
+enabled = false  # Infrastructure tests use different coverage model

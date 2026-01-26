@@ -11,6 +11,9 @@ defineConfig({
   environment: pulumi.getStack(),
 });
 
+// Load configuration
+const config = new pulumi.Config();
+
 // =============================================================================
 // SigNoz - Observability Platform (Traces, Metrics, Logs)
 // =============================================================================
@@ -21,7 +24,7 @@ defineConfig({
 
 const signoz = createSignoz("signoz", {
   size: "medium",  // t3.medium: 2 vCPU, 4GB RAM
-  sshKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINYsfNIOPB8jUzyOp4ExBoiOD78gXh1KljmLotR9J3eY",
+  sshKey: config.get("sshPublicKey"),
 });
 
 // =============================================================================

@@ -1,4 +1,5 @@
 config:
   aws:region: eu-west-2
   monitoring:domain: monitoring.dev.palindrom.ai
+  monitoring:sshPublicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINYsfNIOPB8jUzyOp4ExBoiOD78gXh1KljmLotR9J3eY
 encryptionsalt: v1:+Wq6hpMB8aQ=:v1:OPSe/EjKt/jR5LkN:fyJMk0sTcS6YszbAev0xfcMDIXU2Mg==

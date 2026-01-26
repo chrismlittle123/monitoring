@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "strict": true
+  },
+  "files": [],
+  "references": [
+    { "path": "./infra/pulumi" }
+  ]
+}
