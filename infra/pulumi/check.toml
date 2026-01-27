@@ -1,4 +1,4 @@
-# check.toml - Configuration for check-my-toolkit
+# check.toml - Configuration for @standards-kit/conform
 # Monitoring infrastructure (Pulumi)
 
 [extends]
