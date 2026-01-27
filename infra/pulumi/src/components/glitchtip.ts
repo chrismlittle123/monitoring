@@ -28,7 +28,7 @@ function buildEnv(secretKey: string, options: GlitchTipOptions): Record<string, 
 }
 
 export function createGlitchTip(name: string, options: GlitchTipOptions = {}): GlitchTipOutputs {
-  const db = createDatabase(`${name}-db`, { size: "small", version: "15", storage: 10 });  // Minimal storage
+  const db = createDatabase(`${name}-db`, { size: "small", version: "15", storage: 20 });  // Minimum for AWS RDS
   const redis = createRedis(`${name}-redis`, { size: "small", version: "7.0" });
 
   // Note: Type assertion needed - Pulumi handles Output<string> at runtime
