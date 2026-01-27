@@ -39,7 +39,19 @@ SOURCE_ENV="stag"
 TARGET_ENVS="dev,stag,prod"
 AWS_REGION="${AWS_REGION:-eu-west-2}"
 GCP_PROJECT="${GCP_PROJECT:-}"
-SECRET_BASE_NAME="signoz-otlp-endpoint"
+
+# Read project name from standards.toml for consistent naming
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+STANDARDS_FILE="$REPO_ROOT/standards.toml"
+
+if [[ -f "$STANDARDS_FILE" ]]; then
+    PROJECT=$(grep -E '^project\s*=' "$STANDARDS_FILE" | awk -F'"' '{print $2}' | head -1)
+fi
+PROJECT="${PROJECT:-monitoring}"
+
+# Secret name follows convention: {project}-{name}-secret-{env}
+# The env suffix is added per-environment in sync_aws_secret()
+SECRET_BASE_NAME="${PROJECT}-signoz-otlp-endpoint-secret"
 SYNC_AWS=true
 SYNC_GCP=true
 DRY_RUN=false
@@ -167,9 +179,10 @@ EOF
 # Sync to AWS Secrets Manager for a specific environment
 sync_aws_secret() {
     local env="$1"
-    local secret_name="${SECRET_BASE_NAME}"
+    local secret_name="${SECRET_BASE_NAME}-${env}"
 
     log_step "Syncing to AWS Secrets Manager ($env account)..."
+    log_info "Secret name: $secret_name"
 
     export AWS_PROFILE="$env"
 
@@ -198,37 +211,41 @@ sync_aws_secret() {
     log_info "AWS secret synced to $env account"
 }
 
-# Sync to GCP Secret Manager
+# Sync to GCP Secret Manager for a specific environment
 sync_gcp_secret() {
-    local secret_name="${SECRET_BASE_NAME}"
+    local env="$1"
+    local gcp_project="christopher-little-${env}"
+    local secret_name="${SECRET_BASE_NAME}-${env}"
 
-    if [[ -z "$GCP_PROJECT" ]]; then
-        log_warn "GCP_PROJECT not set, skipping GCP Secret Manager sync"
+    log_step "Syncing to GCP Secret Manager ($gcp_project)..."
+    log_info "Secret name: $secret_name"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "[DRY RUN] Would create/update secret '$secret_name' in GCP project $gcp_project"
         return 0
     fi
 
-    log_step "Syncing to GCP Secret Manager (project: $GCP_PROJECT)..."
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY RUN] Would create/update secret '$secret_name' in GCP project $GCP_PROJECT"
+    # Check if Secret Manager API is enabled
+    if ! gcloud secrets list --project="$gcp_project" --limit=1 &>/dev/null; then
+        log_warn "Secret Manager API not enabled in $gcp_project, skipping"
         return 0
     fi
 
     # Check if secret exists
-    if gcloud secrets describe "$secret_name" --project="$GCP_PROJECT" &>/dev/null; then
+    if gcloud secrets describe "$secret_name" --project="$gcp_project" &>/dev/null; then
         log_info "Adding new version to existing secret: $secret_name"
         echo -n "$SECRET_VALUE" | gcloud secrets versions add "$secret_name" \
-            --project="$GCP_PROJECT" \
+            --project="$gcp_project" \
             --data-file=-
     else
         log_info "Creating new secret: $secret_name"
         echo -n "$SECRET_VALUE" | gcloud secrets create "$secret_name" \
-            --project="$GCP_PROJECT" \
+            --project="$gcp_project" \
             --data-file=- \
             --labels="source-environment=$SOURCE_ENV,managed-by=sync-otlp-secrets"
     fi
 
-    log_info "GCP secret synced successfully"
+    log_info "GCP secret synced to $gcp_project"
 }
 
 # Run AWS sync for all target environments
@@ -239,18 +256,18 @@ if [[ "$SYNC_AWS" == "true" ]]; then
     done
 fi
 
-# Run GCP sync (single project)
+# Run GCP sync for all target environments
 if [[ "$SYNC_GCP" == "true" ]]; then
-    sync_gcp_secret
-    echo ""
+    for env in "${TARGETS[@]}"; do
+        sync_gcp_secret "$env"
+        echo ""
+    done
 fi
 
 log_info "=== Secret sync completed successfully! ==="
 echo ""
 log_info "To retrieve the secrets:"
 for env in "${TARGETS[@]}"; do
-    log_info "  AWS ($env): AWS_PROFILE=$env aws secretsmanager get-secret-value --secret-id $SECRET_BASE_NAME --region $AWS_REGION --query SecretString --output text"
+    log_info "  AWS ($env): AWS_PROFILE=$env aws secretsmanager get-secret-value --secret-id ${SECRET_BASE_NAME}-${env} --region $AWS_REGION --query SecretString --output text"
+    log_info "  GCP ($env): gcloud secrets versions access latest --secret=${SECRET_BASE_NAME}-${env} --project=christopher-little-${env}"
 done
-if [[ -n "$GCP_PROJECT" ]]; then
-    log_info "  GCP: gcloud secrets versions access latest --secret=$SECRET_BASE_NAME --project=$GCP_PROJECT"
-fi
