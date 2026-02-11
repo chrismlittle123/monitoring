@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the observability stack for Palindrom web applications. The stack consists of two self-hosted tools:
+This document specifies the observability stack for Progression Labs web applications. The stack consists of two self-hosted tools:
 
 | Tool | Purpose | Backend Database |
 |------|---------|------------------|

@@ -13,7 +13,7 @@ importers:
     dependencies:
       '@chrismlittle123/infra':
         specifier: github:chrismlittle123/infra
-        version: '@palindrom-ai/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969(typescript@5.9.3)'
+        version: '@progression-labs/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969(typescript@5.9.3)'
       '@pulumi/pulumi':
         specifier: ^3.0.0
         version: 3.217.1(typescript@5.9.3)
@@ -459,7 +459,7 @@ packages:
     resolution: {integrity: sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA==}
     engines: {node: '>=14'}
 
-  '@palindrom-ai/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969':
+  '@progression-labs/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969':
     resolution: {tarball: https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969}
     version: 0.0.1
 
@@ -2960,7 +2960,7 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.28.0': {}
 
-  '@palindrom-ai/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969(typescript@5.9.3)':
+  '@progression-labs/infra@https://codeload.github.com/chrismlittle123/infra/tar.gz/660091486084a5967d9a7d4f395191509ca00969(typescript@5.9.3)':
     dependencies:
       '@pulumi/aws': 6.83.2(typescript@5.9.3)
       '@pulumi/gcp': 9.10.0(typescript@5.9.3)
