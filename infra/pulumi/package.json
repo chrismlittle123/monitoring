@@ -1,7 +1,7 @@
 {
   "name": "monitoring-infra",
   "version": "0.2.0",
-  "description": "Observability stack infrastructure (SigNoz + GlitchTip) on AWS",
+  "description": "Observability stack infrastructure (SigNoz) on AWS",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",

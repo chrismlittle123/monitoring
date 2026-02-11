@@ -3,4 +3,4 @@ runtime:
   name: nodejs
   options:
     typescript: true
-description: Observability stack (SigNoz + GlitchTip) on AWS ECS Fargate
+description: Observability stack (SigNoz) on AWS

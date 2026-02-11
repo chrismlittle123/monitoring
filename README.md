@@ -12,12 +12,6 @@ OpenTelemetry-native observability platform for traces, metrics, and logs.
 - **OTLP gRPC**: {signoz-ip}:4317
 - **OTLP HTTP**: http://{signoz-ip}:4318
 
-### GlitchTip (Error Tracking)
-
-Sentry-compatible error tracking platform.
-
-- **UI**: http://{glitchtip-alb-url}
-
 ## Deployment
 
 Deployed via Pulumi using `@chrismlittle123/infra` package. Push to `main` branch triggers GitHub Actions deployment.

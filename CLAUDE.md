@@ -57,8 +57,6 @@ Example: `monitoring-signoz-otlp-endpoint-secret-dev`
 | Secret | Description |
 |--------|-------------|
 | `monitoring-signoz-otlp-endpoint-secret-dev` | SigNoz OTLP endpoints (HTTP + gRPC) |
-| `monitoring-glitchtip-db-key-secret-dev` | GlitchTip database secret key |
-| `monitoring-glitchtip-db-password-secret-dev` | GlitchTip database password |
 
 ### Syncing OTLP Secrets
 
@@ -121,8 +119,5 @@ AWS_PROFILE=stag aws secretsmanager delete-secret \
 | Component | Size | Instance Type | RAM |
 |-----------|------|---------------|-----|
 | SigNoz EC2 | medium | t3.medium | 4GB |
-| GlitchTip RDS | small | db.t4g.micro | 1GB |
-| GlitchTip Redis | small | cache.t3.small | 1.5GB |
-| GlitchTip ECS | small | - | 512MB |
 
 **Note:** SigNoz requires at least `medium` size. The `small` size (t3.micro, 1GB) is insufficient to run ClickHouse + OTel collector + query service.

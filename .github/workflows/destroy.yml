@@ -132,7 +132,7 @@ jobs:
           FOUND=0
           if [ -n "$RDS" ]; then
             for db in $RDS; do
-              if [[ "$db" == *"monitoring"* ]] || [[ "$db" == *"glitchtip"* ]]; then
+              if [[ "$db" == *"monitoring"* ]]; then
                 echo "WARNING: Found RDS: $db"
                 FOUND=1
               fi
@@ -148,7 +148,7 @@ jobs:
           FOUND=0
           if [ -n "$REDIS" ]; then
             for cache in $REDIS; do
-              if [[ "$cache" == *"monitoring"* ]] || [[ "$cache" == *"glitchtip"* ]]; then
+              if [[ "$cache" == *"monitoring"* ]]; then
                 echo "WARNING: Found ElastiCache: $cache"
                 FOUND=1
               fi
