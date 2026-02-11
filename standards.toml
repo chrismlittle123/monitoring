@@ -1,3 +1,6 @@
 [metadata]
 project = "monitoring"
 tier = "internal"
+
+[standards]
+ruleset = "typescript-internal"

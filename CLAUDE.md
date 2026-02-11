@@ -42,45 +42,25 @@ console.log('Manifest regenerated with', m.resources.length, 'resources');
 
 ### Naming Convention
 
-Secrets follow the pattern: `{project}-{name}-{component}-{env}`
+Secrets follow the pattern: `{project}-{name}-secret-{env}`
 
 Example: `monitoring-signoz-otlp-endpoint-secret-dev`
 
 ### Current Secrets
 
-| Secret | Description |
-|--------|-------------|
-| `monitoring-signoz-otlp-endpoint-secret-dev` | SigNoz OTLP endpoints (HTTP + gRPC) |
+| Secret | Managed By | Description |
+|--------|-----------|-------------|
+| `monitoring-signoz-otlp-endpoint-secret-dev` | Pulumi (`createSecret`) | SigNoz OTLP endpoints (HTTP + gRPC) |
 
-### Syncing OTLP Secrets
+The OTLP endpoint secret is created via `createSecret` in `infra/pulumi/src/index.ts`. Pulumi keeps the secret value in sync with the EC2 instance IP on every `pulumi up` — no manual sync step is needed.
 
-**IMPORTANT:** When SigNoz is redeployed, the EC2 instance may get a new IP address. The OTLP endpoint secret must be updated to match.
-
-Use the sync script after any deployment that changes the SigNoz instance:
-
-```bash
-./infra/pulumi/scripts/sync-otlp-secrets.sh --source dev --targets dev --aws-only
-
-# Dry run to see what would change
-./infra/pulumi/scripts/sync-otlp-secrets.sh --source dev --targets dev --aws-only --dry-run
-```
-
-The script:
-1. Fetches the current OTLP endpoint from Pulumi stack outputs
-2. Updates the AWS secret with the new IP
-
-### Verifying Secrets Match
+### Verifying Secrets
 
 ```bash
 # Check secret value
 AWS_PROFILE=dev aws secretsmanager get-secret-value \
   --secret-id monitoring-signoz-otlp-endpoint-secret-dev \
   --region eu-west-2 --query SecretString --output text | jq .
-
-# Check current SigNoz IP
-AWS_PROFILE=dev aws ec2 describe-instances --region eu-west-2 \
-  --filters "Name=tag:Name,Values=*signoz*" "Name=instance-state-name,Values=running" \
-  --query 'Reservations[].Instances[].PublicIpAddress' --output text
 ```
 
 ## Destroying Resources

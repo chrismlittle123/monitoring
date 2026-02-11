@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { defineConfig } from "@chrismlittle123/infra";
+import { createSecret, defineConfig } from "@chrismlittle123/infra";
 import { createSignoz } from "./components/signoz";
 
 // Configure for AWS (100% AWS deployment)
@@ -27,9 +27,19 @@ const signoz = createSignoz("signoz", {
 });
 
 // =============================================================================
+// Secrets
+// =============================================================================
+
+const otlpSecret = createSecret("signoz-otlp-endpoint", {
+  value: pulumi.interpolate`{"http":"${signoz.otlpHttpEndpoint}","grpc":"${signoz.otlpGrpcEndpoint}"}` as unknown as string,
+});
+
+// =============================================================================
 // Exports
 // =============================================================================
 
+export const otlpSecretName = otlpSecret.secretName;
+export const otlpSecretArn = otlpSecret.secretArn;
 export const signozUrl = signoz.url;
 export const signozOtlpHttp = signoz.otlpHttpEndpoint;
 export const signozOtlpGrpc = signoz.otlpGrpcEndpoint;

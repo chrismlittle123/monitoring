@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chrismlittle123/github-actions/typescript-test@main
+        with:
+          working-directory: infra/pulumi
+
+  standards:
+    name: Standards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chrismlittle123/github-actions/typescript-standards-check@main
+        with:
+          working-directory: infra/pulumi
