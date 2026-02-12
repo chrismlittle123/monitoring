@@ -15,6 +15,17 @@ export interface SignozOptions {
    * SSH public key for access (optional)
    */
   sshKey?: string;
+
+  /**
+   * Admin email for initial registration
+   * @default "admin@monitoring.local"
+   */
+  adminEmail?: string;
+
+  /**
+   * Admin password for initial registration
+   */
+  adminPassword: pulumi.Input<string>;
 }
 
 export interface SignozOutputs {
@@ -45,14 +56,20 @@ export interface SignozOutputs {
 }
 
 /**
- * User data script to install Docker and run SigNoz via Docker Compose
+ * User data script to install Docker and run SigNoz via Docker Compose.
+ * SIGNOZ_ADMIN_EMAIL and SIGNOZ_ADMIN_PASSWORD are interpolated by Pulumi.
  */
-const signozUserData = `#!/bin/bash
+function buildSignozUserData(adminEmail: string, adminPassword: pulumi.Input<string>): pulumi.Output<string> {
+  return pulumi.interpolate`#!/bin/bash
 set -e
 
 # Log output to file for debugging
 exec > >(tee /var/log/user-data.log) 2>&1
 echo "Starting SigNoz installation at $(date)"
+
+# Admin credentials (set by Pulumi)
+SIGNOZ_ADMIN_EMAIL="${adminEmail}"
+SIGNOZ_ADMIN_PASSWORD="${adminPassword}"
 
 # Update system
 apt-get update
@@ -135,10 +152,31 @@ SERVICE
 systemctl daemon-reload
 systemctl enable signoz
 
+# Wait for SigNoz to become healthy, then auto-register admin account
+echo "Waiting for SigNoz to start..."
+for i in $(seq 1 60); do
+  if curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; then
+    echo "SigNoz is healthy after $((i * 10)) seconds"
+    break
+  fi
+  sleep 10
+done
+
+# Register admin account (only works on first boot, no-op if already registered)
+REGISTER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+  http://localhost:8080/api/v1/register \
+  -X POST -H "Content-Type: application/json" \
+  -d "{\"email\":\"$SIGNOZ_ADMIN_EMAIL\",\"name\":\"Admin\",\"orgName\":\"monitoring\",\"password\":\"$SIGNOZ_ADMIN_PASSWORD\"}")
+echo "Registration response: $REGISTER_RESPONSE"
+
 echo "SigNoz installation completed at $(date)"
 `;
+}
 
-export function createSignoz(name: string, options: SignozOptions = {}): SignozOutputs {
+export function createSignoz(name: string, options: SignozOptions): SignozOutputs {
+  const adminEmail = options.adminEmail || "admin@monitoring.local";
+  const userData = buildSignozUserData(adminEmail, options.adminPassword);
+
   const instance = createInstance(name, {
     size: options.size || "medium",
     os: "ubuntu-22.04",
@@ -151,7 +189,7 @@ export function createSignoz(name: string, options: SignozOptions = {}): SignozO
       { port: 4317, description: "OTLP gRPC receiver" },
       { port: 4318, description: "OTLP HTTP receiver" },
     ],
-    userData: signozUserData,
+    userData: userData,
   });
 
   return {

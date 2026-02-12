@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
 import { createSecret, defineConfig } from "@chrismlittle123/infra";
 import { createSignoz } from "./components/signoz";
 
@@ -21,9 +22,17 @@ const config = new pulumi.Config();
 // - OTel Collector for ingestion
 // - Query Service + Frontend for UI
 
+const signozAdminEmail = "admin@monitoring.local";
+const signozAdminPassword = new random.RandomPassword("signoz-admin-password", {
+  length: 24,
+  special: false,
+});
+
 const signoz = createSignoz("signoz", {
   size: "medium",  // t3.micro (small) has only 1GB - not enough for SigNoz
   sshKey: config.get("sshPublicKey"),
+  adminEmail: signozAdminEmail,
+  adminPassword: signozAdminPassword.result,
 });
 
 // =============================================================================
@@ -34,12 +43,18 @@ const otlpSecret = createSecret("signoz-otlp-endpoint", {
   value: pulumi.interpolate`{"http":"${signoz.otlpHttpEndpoint}","grpc":"${signoz.otlpGrpcEndpoint}"}` as unknown as string,
 });
 
+const adminSecret = createSecret("signoz-admin-credentials", {
+  value: pulumi.interpolate`{"email":"${signozAdminEmail}","password":"${signozAdminPassword.result}","url":"${signoz.url}"}` as unknown as string,
+});
+
 // =============================================================================
 // Exports
 // =============================================================================
 
 export const otlpSecretName = otlpSecret.secretName;
 export const otlpSecretArn = otlpSecret.secretArn;
+export const adminSecretName = adminSecret.secretName;
+export const adminSecretArn = adminSecret.secretArn;
 export const signozUrl = signoz.url;
 export const signozOtlpHttp = signoz.otlpHttpEndpoint;
 export const signozOtlpGrpc = signoz.otlpGrpcEndpoint;

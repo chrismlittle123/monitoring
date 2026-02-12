@@ -17,6 +17,9 @@ importers:
       '@pulumi/pulumi':
         specifier: ^3.220.0
         version: 3.220.0(typescript@5.9.3)
+      '@pulumi/random':
+        specifier: ^4.19.1
+        version: 4.19.1(typescript@5.9.3)
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.2

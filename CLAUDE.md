@@ -51,16 +51,46 @@ Example: `monitoring-signoz-otlp-endpoint-secret-dev`
 | Secret | Managed By | Description |
 |--------|-----------|-------------|
 | `monitoring-signoz-otlp-endpoint-secret-dev` | Pulumi (`createSecret`) | SigNoz OTLP endpoints (HTTP + gRPC) |
+| `monitoring-signoz-admin-credentials-secret-dev` | Pulumi (`createSecret`) | SigNoz admin email, password, and URL |
 
-The OTLP endpoint secret is created via `createSecret` in `infra/pulumi/src/index.ts`. Pulumi keeps the secret value in sync with the EC2 instance IP on every `pulumi up` — no manual sync step is needed.
+All secrets are created via `createSecret` in `infra/pulumi/src/index.ts`. Pulumi keeps values in sync with infrastructure on every `pulumi up`.
+
+The admin password is auto-generated via `@pulumi/random.RandomPassword` and the admin account is auto-registered on first boot via the EC2 user data script.
 
 ### Verifying Secrets
 
 ```bash
-# Check secret value
+# Check OTLP endpoints
 AWS_PROFILE=dev aws secretsmanager get-secret-value \
   --secret-id monitoring-signoz-otlp-endpoint-secret-dev \
   --region eu-west-2 --query SecretString --output text | jq .
+
+# Check admin credentials
+AWS_PROFILE=dev aws secretsmanager get-secret-value \
+  --secret-id monitoring-signoz-admin-credentials-secret-dev \
+  --region eu-west-2 --query SecretString --output text | jq .
+```
+
+### SigNoz Login
+
+Retrieve credentials from AWS Secrets Manager (see above) and use the v2 session API:
+
+```bash
+# Get credentials
+CREDS=$(AWS_PROFILE=dev aws secretsmanager get-secret-value \
+  --secret-id monitoring-signoz-admin-credentials-secret-dev \
+  --region eu-west-2 --query SecretString --output text)
+URL=$(echo $CREDS | jq -r .url)
+EMAIL=$(echo $CREDS | jq -r .email)
+PASSWORD=$(echo $CREDS | jq -r .password)
+
+# Get session context (for org ID)
+ORG_ID=$(curl -s "$URL/api/v2/sessions/context?email=$EMAIL&ref=$URL" | jq -r '.data.orgs[0].id')
+
+# Login
+curl -s "$URL/api/v2/sessions/email_password" \
+  -X POST -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"orgID\":\"$ORG_ID\"}"
 ```
 
 ## Destroying Resources

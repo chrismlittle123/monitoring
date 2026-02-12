@@ -15,7 +15,7 @@ describe("createSignoz", () => {
   });
 
   it("should create an instance with default medium size", () => {
-    createSignoz("test-signoz", {});
+    createSignoz("test-signoz", { adminPassword: "test-password" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -30,6 +30,7 @@ describe("createSignoz", () => {
   it("should pass sshKey to instance when provided", () => {
     createSignoz("test-signoz", {
       sshKey: "ssh-ed25519 AAAA...",
+      adminPassword: "test-password",
     });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
@@ -41,7 +42,7 @@ describe("createSignoz", () => {
   });
 
   it("should allow undefined sshKey", () => {
-    createSignoz("test-signoz", {});
+    createSignoz("test-signoz", { adminPassword: "test-password" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -52,7 +53,7 @@ describe("createSignoz", () => {
   });
 
   it("should allow specifying instance size", () => {
-    createSignoz("test-signoz", { size: "large" });
+    createSignoz("test-signoz", { size: "large", adminPassword: "test-password" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -63,7 +64,7 @@ describe("createSignoz", () => {
   });
 
   it("should configure required ports for SigNoz", () => {
-    createSignoz("test-signoz", {});
+    createSignoz("test-signoz", { adminPassword: "test-password" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -88,7 +89,7 @@ describe("createSignoz", () => {
   });
 
   it("should include userData script with Docker and SigNoz installation", () => {
-    createSignoz("test-signoz", {});
+    createSignoz("test-signoz", { adminPassword: "test-password" });
 
     const callArgs = mockCreateInstance.mock.calls[0][1];
     expect(callArgs.userData).toContain("docker");
@@ -98,7 +99,7 @@ describe("createSignoz", () => {
   });
 
   it("should configure HTTP and HTTPS access", () => {
-    createSignoz("test-signoz", {});
+    createSignoz("test-signoz", { adminPassword: "test-password" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
