@@ -172,7 +172,8 @@ cd /opt/monitoring-mcp
 docker build -t monitoring-mcp:latest .
 
 # Write MCP environment file for Docker Compose
-cat > /opt/signoz/deploy/.env.mcp << MCPENV
+# env_file paths resolve relative to the project directory (docker/ subdir)
+cat > /opt/signoz/deploy/docker/.env.mcp << MCPENV
 MCP_API_KEY=$MCP_API_KEY
 MCPENV
 
