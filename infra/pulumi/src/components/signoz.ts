@@ -221,7 +221,7 @@ cat >> /opt/signoz/deploy/docker-compose.override.yml << 'MCP_OVERRIDE'
     depends_on:
       - clickhouse
     networks:
-      - default
+      - signoz-net
     deploy:
       resources:
         limits:
