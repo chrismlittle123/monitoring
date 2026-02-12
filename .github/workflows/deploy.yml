@@ -70,15 +70,18 @@ jobs:
 
           echo "=== Verifying SigNoz Login ==="
           # Retry login up to 5 minutes (admin registration runs after health check passes)
+          # Use jq to safely construct JSON (password may contain special chars)
           LOGIN_OK=false
           for attempt in $(seq 1 30); do
             ORG_ID=$(curl -sf "$SIGNOZ_URL/api/v2/sessions/context?email=$EMAIL&ref=$SIGNOZ_URL" \
               | jq -r '.data.orgs[0].id' 2>/dev/null || echo "")
 
             if [ -n "$ORG_ID" ] && [ "$ORG_ID" != "null" ]; then
+              LOGIN_PAYLOAD=$(jq -n --arg e "$EMAIL" --arg p "$PASSWORD" --arg o "$ORG_ID" \
+                '{email: $e, password: $p, orgID: $o}')
               LOGIN=$(curl -sf "$SIGNOZ_URL/api/v2/sessions/email_password" \
                 -X POST -H "Content-Type: application/json" \
-                -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"orgID\":\"$ORG_ID\"}" 2>/dev/null || echo "")
+                -d "$LOGIN_PAYLOAD" 2>/dev/null || echo "")
 
               if echo "$LOGIN" | jq -e '.data.accessToken' > /dev/null 2>&1; then
                 echo "✓ Login successful (attempt $attempt)"
@@ -100,20 +103,20 @@ jobs:
           echo "=== Verifying OTLP Ingestion ==="
           NOW=$(date +%s)000000000
 
-          # Send test trace
-          TRACE_RESP=$(curl -sf "$OTLP_HTTP/v1/traces" \
+          # Send test trace (retry up to 30s for OTel collector startup)
+          TRACE_RESP=$(curl -sf --retry 3 --retry-delay 10 --retry-connrefused "$OTLP_HTTP/v1/traces" \
             -X POST -H "Content-Type: application/json" \
             -d "{\"resourceSpans\":[{\"resource\":{\"attributes\":[{\"key\":\"service.name\",\"value\":{\"stringValue\":\"deploy-verify\"}}]},\"scopeSpans\":[{\"scope\":{\"name\":\"deploy-verify\"},\"spans\":[{\"traceId\":\"$(openssl rand -hex 16)\",\"spanId\":\"$(openssl rand -hex 8)\",\"name\":\"verify-span\",\"kind\":1,\"startTimeUnixNano\":\"$NOW\",\"endTimeUnixNano\":\"$NOW\",\"status\":{}}]}]}]}")
           echo "✓ Trace accepted"
 
           # Send test log
-          LOG_RESP=$(curl -sf "$OTLP_HTTP/v1/logs" \
+          LOG_RESP=$(curl -sf --retry 3 --retry-delay 10 --retry-connrefused "$OTLP_HTTP/v1/logs" \
             -X POST -H "Content-Type: application/json" \
             -d "{\"resourceLogs\":[{\"resource\":{\"attributes\":[{\"key\":\"service.name\",\"value\":{\"stringValue\":\"deploy-verify\"}}]},\"scopeLogs\":[{\"scope\":{\"name\":\"deploy-verify\"},\"logRecords\":[{\"timeUnixNano\":\"$NOW\",\"severityNumber\":9,\"severityText\":\"INFO\",\"body\":{\"stringValue\":\"deploy verification log\"}}]}]}]}")
           echo "✓ Log accepted"
 
           # Send test metric
-          METRIC_RESP=$(curl -sf "$OTLP_HTTP/v1/metrics" \
+          METRIC_RESP=$(curl -sf --retry 3 --retry-delay 10 --retry-connrefused "$OTLP_HTTP/v1/metrics" \
             -X POST -H "Content-Type: application/json" \
             -d "{\"resourceMetrics\":[{\"resource\":{\"attributes\":[{\"key\":\"service.name\",\"value\":{\"stringValue\":\"deploy-verify\"}}]},\"scopeMetrics\":[{\"scope\":{\"name\":\"deploy-verify\"},\"metrics\":[{\"name\":\"deploy.verify.counter\",\"sum\":{\"dataPoints\":[{\"asInt\":\"1\",\"startTimeUnixNano\":\"$NOW\",\"timeUnixNano\":\"$NOW\"}],\"aggregationTemporality\":2,\"isMonotonic\":true}}]}]}]}")
           echo "✓ Metric accepted"
