@@ -75,8 +75,8 @@ SIGNOZ_ADMIN_PASSWORD="${adminPassword}"
 apt-get update
 apt-get upgrade -y
 
-# Install Docker
-apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+# Install Docker and jq (jq needed for safe JSON construction in registration)
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release jq
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt-get update
@@ -163,10 +163,15 @@ for i in $(seq 1 60); do
 done
 
 # Register admin account (only works on first boot, no-op if already registered)
+# Use jq to safely construct JSON (handles special chars in password)
+REGISTER_PAYLOAD=$(jq -n \
+  --arg email "$SIGNOZ_ADMIN_EMAIL" \
+  --arg password "$SIGNOZ_ADMIN_PASSWORD" \
+  '{email: $email, name: "Admin", orgName: "monitoring", password: $password}')
 REGISTER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
   http://localhost:8080/api/v1/register \
   -X POST -H "Content-Type: application/json" \
-  -d "{\"email\":\"$SIGNOZ_ADMIN_EMAIL\",\"name\":\"Admin\",\"orgName\":\"monitoring\",\"password\":\"$SIGNOZ_ADMIN_PASSWORD\"}")
+  -d "$REGISTER_PAYLOAD")
 echo "Registration response: $REGISTER_RESPONSE"
 
 echo "SigNoz installation completed at $(date)"
