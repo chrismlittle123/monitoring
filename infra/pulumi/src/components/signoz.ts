@@ -189,7 +189,7 @@ export function createSignoz(name: string, options: SignozOptions): SignozOutput
       { port: 4317, description: "OTLP gRPC receiver" },
       { port: 4318, description: "OTLP HTTP receiver" },
     ],
-    userData: userData,
+    userData: userData as unknown as string,
   });
 
   return {
