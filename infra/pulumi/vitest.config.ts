@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    exclude: ["tests/integration/**"],
     alias: {
       // Alias external packages to allow mocking
       "@chrismlittle123/infra": new URL(
