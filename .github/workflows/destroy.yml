@@ -29,7 +29,7 @@ jobs:
       - name: Force-delete secrets
         run: |
           echo "Force-deleting secrets to avoid recovery window conflicts on redeploy..."
-          for secret in monitoring-signoz-otlp-endpoint-secret-dev monitoring-signoz-admin-credentials-secret-dev; do
+          for secret in monitoring-signoz-otlp-endpoint-secret-dev monitoring-signoz-admin-credentials-secret-dev monitoring-mcp-api-key-secret-dev; do
             aws secretsmanager delete-secret --secret-id "$secret" --force-delete-without-recovery --region $AWS_REGION 2>/dev/null && \
               echo "✓ Force-deleted $secret" || echo "✓ $secret already deleted"
           done

@@ -48,6 +48,33 @@ Use the MCP tools to query standards at any time:
 - **Deploy:** Pulumi via CI (push to main triggers `pulumi up`)
 - **Commits:** Use conventional commits (`feat:`, `fix:`, `chore:`, etc.)
 
+## MCP Server
+
+An MCP server runs colocated with SigNoz on the EC2 instance, providing coding agents direct access to ClickHouse telemetry data.
+
+- **Source:** `mcp/` directory
+- **Port:** 3001 (exposed via security group)
+- **Auth:** Bearer token via `MCP_API_KEY` environment variable
+- **Secret:** `monitoring-mcp-api-key-secret-dev` (contains `apiKey` and `endpoint`)
+
+### Verifying MCP Server
+
+```bash
+MCP_SECRET=$(AWS_PROFILE=dev aws secretsmanager get-secret-value \
+  --secret-id monitoring-mcp-api-key-secret-dev \
+  --region eu-west-2 --query SecretString --output text)
+ENDPOINT=$(echo "$MCP_SECRET" | jq -r .endpoint)
+KEY=$(echo "$MCP_SECRET" | jq -r .apiKey)
+
+# Health check (unauthenticated)
+curl "$ENDPOINT/health"
+
+# Ping tool (authenticated)
+curl -H "Authorization: Bearer $KEY" "$ENDPOINT/mcp" \
+  -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ping"}}'
+```
+
 ## Project-Specific Notes
 
 - See `docs/runbook.md` for detailed infrastructure operations (secrets, sizing, destroy procedures, SigNoz login)

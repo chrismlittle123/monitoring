@@ -15,7 +15,7 @@ describe("createSignoz", () => {
   });
 
   it("should create an instance with default medium size", () => {
-    createSignoz("test-signoz", { adminPassword: "test-password" });
+    createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -31,6 +31,7 @@ describe("createSignoz", () => {
     createSignoz("test-signoz", {
       sshKey: "ssh-ed25519 AAAA...",
       adminPassword: "test-password",
+      mcpApiKey: "test-mcp-key",
     });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
@@ -42,7 +43,7 @@ describe("createSignoz", () => {
   });
 
   it("should allow undefined sshKey", () => {
-    createSignoz("test-signoz", { adminPassword: "test-password" });
+    createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -53,7 +54,7 @@ describe("createSignoz", () => {
   });
 
   it("should allow specifying instance size", () => {
-    createSignoz("test-signoz", { size: "large", adminPassword: "test-password" });
+    createSignoz("test-signoz", { size: "large", adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -64,7 +65,7 @@ describe("createSignoz", () => {
   });
 
   it("should configure required ports for SigNoz", () => {
-    createSignoz("test-signoz", { adminPassword: "test-password" });
+    createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",
@@ -73,23 +74,25 @@ describe("createSignoz", () => {
           expect.objectContaining({ port: 8080 }), // UI
           expect.objectContaining({ port: 4317 }), // OTLP gRPC
           expect.objectContaining({ port: 4318 }), // OTLP HTTP
+          expect.objectContaining({ port: 3001 }), // MCP server
         ]),
       })
     );
   });
 
   it("should return expected output structure", () => {
-    const result = createSignoz("test-signoz", {});
+    const result = createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(result).toHaveProperty("url");
     expect(result).toHaveProperty("otlpHttpEndpoint");
     expect(result).toHaveProperty("otlpGrpcEndpoint");
     expect(result).toHaveProperty("publicIp");
     expect(result).toHaveProperty("instanceId");
+    expect(result).toHaveProperty("mcpEndpoint");
   });
 
   it("should include userData script with Docker and SigNoz installation", () => {
-    createSignoz("test-signoz", { adminPassword: "test-password" });
+    createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     const callArgs = mockCreateInstance.mock.calls[0][1];
     expect(callArgs.userData).toContain("docker");
@@ -99,7 +102,7 @@ describe("createSignoz", () => {
   });
 
   it("should configure HTTP and HTTPS access", () => {
-    createSignoz("test-signoz", { adminPassword: "test-password" });
+    createSignoz("test-signoz", { adminPassword: "test-password", mcpApiKey: "test-mcp-key" });
 
     expect(mockCreateInstance).toHaveBeenCalledWith(
       "test-signoz",

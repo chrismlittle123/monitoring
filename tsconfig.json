@@ -4,6 +4,7 @@
   },
   "files": [],
   "references": [
-    { "path": "./infra/pulumi" }
+    { "path": "./infra/pulumi" },
+    { "path": "./mcp" }
   ]
 }

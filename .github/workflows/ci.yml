@@ -26,3 +26,12 @@ jobs:
       - uses: chrismlittle123/github-actions/typescript-standards-check@main
         with:
           working-directory: infra/pulumi
+
+  test-mcp:
+    name: Test MCP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chrismlittle123/github-actions/typescript-test@main
+        with:
+          working-directory: mcp
